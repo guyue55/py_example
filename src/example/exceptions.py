@@ -4,20 +4,21 @@ This module defines custom exceptions used throughout the SDK.
 """
 
 from typing import Optional
+
 import requests
 
 
 class APIError(Exception):
     """Base exception for all API errors.
-    
+
     Attributes:
         message: Error message.
         response: The API response that caused the error.
     """
-    
+
     def __init__(self, message: str, response: Optional[requests.Response] = None):
         """Initialize the API error.
-        
+
         Args:
             message: Error message.
             response: The API response that caused the error.
@@ -25,7 +26,10 @@ class APIError(Exception):
         super().__init__(message)
         self.message = message
         self.response = response
-        self.status_code = response.status_code if response else None
+        # NOTE: ``requests.Response`` is falsy for error statuses (its ``__bool__``
+        # is ``ok``), so we must check ``is not None`` rather than truthiness,
+        # otherwise the status code is dropped for every 4xx/5xx response.
+        self.status_code = response.status_code if response is not None else None
 
 
 class AuthenticationError(APIError):
