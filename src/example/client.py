@@ -14,6 +14,10 @@ from urllib3.util.retry import Retry
 from . import __version__
 from .exceptions import APIError, AuthenticationError, RateLimitError
 
+# Top-level package name, derived at runtime so the User-Agent stays correct
+# even after this template is renamed to a real package name.
+_PACKAGE_NAME = __name__.split(".")[0]
+
 logger = logging.getLogger(__name__)
 
 # Status codes that are safe (and worthwhile) to retry: 429 (rate limit) and
@@ -166,7 +170,7 @@ class APIClient:
 
         # Add default User-Agent (driven by the package version).
         if "User-Agent" not in headers:
-            headers["User-Agent"] = f"example/{__version__}"
+            headers["User-Agent"] = f"{_PACKAGE_NAME}/{__version__}"
 
         try:
             response = self.session.request(

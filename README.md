@@ -1,9 +1,9 @@
 # Example
 
 > **Template notice:** This repository is a template. The package is named
-> `example` as a neutral placeholder. Before publishing, rename it to your own
-> package name by search-and-replacing `example` across the whole repository
-> (directory `src/example`, `pyproject.toml` `name`, imports, and tests).
+> `example` as a neutral placeholder. Before using it as your own project, rename
+> it with the provided helper:
+> `python scripts/rename_template.py <your_package_name>`
 
 A minimal Python SDK utility template that provides common building blocks for
 building Python SDKs: an HTTP client wrapper with auth, retry, and error
@@ -29,6 +29,32 @@ pip install ".[dev]"   # includes pytest and ruff for development
 - Authentication helpers (`BearerAuth`, `BasicAuth`, `ApiKeyAuth`)
 - Automatic retry with exponential backoff + jitter (429 and 5xx)
 - Typed error handling (`APIError`, `RateLimitError`, `AuthenticationError`)
+- Type-checked (`mypy`) and linted (`ruff`); tested across Python 3.9–3.13
+
+## Using this template
+
+This repo is a starting point, not a final package. The package name `example`
+is a placeholder. To make it your own, run the rename helper (it moves the
+source directory, updates `pyproject.toml`, rewrites imports, and fixes the
+docs in one step):
+
+```bash
+python scripts/rename_template.py my_sdk        # dry-run first with --dry-run
+git add -A && git commit -m "chore: rename template to my_sdk"
+pip install -e .
+pytest
+```
+
+After renaming, update `authors` and `project.urls` in `pyproject.toml` for
+your project.
+
+## Publishing to PyPI
+
+The template is structured for easy publishing with **Trusted Publishing
+(OIDC)** — no API token stored in the repo. See
+[docs/PUBLISHING.md](docs/PUBLISHING.md) for the full workflow (TestPyPI
+verification, `twine check`, release from a tag, and the GitHub Actions
+`publish.yml`).
 
 ## Usage
 
