@@ -8,7 +8,9 @@ buildable under the new name.
 What it does
 ------------
 1. Moves ``src/example`` -> ``src/<name>``.
-2. Updates the ``name`` field in ``pyproject.toml``.
+2. Updates the ``name`` field and the dynamic-version ``attr`` reference
+   (``example.__version__`` -> ``<name>.__version__``) in ``pyproject.toml``
+   so the package still builds under the new name.
 3. Rewrites ``from example...`` / ``import example`` across all ``.py`` files
    (source + tests).
 4. Updates ``src/example`` references in the docs.
@@ -37,6 +39,10 @@ SRC_EXAMPLE = os.path.join(REPO_ROOT, "src", "example")
 
 IMPORT_RE = re.compile(r"(from|import)\s+example(\s|\.|$)")
 PYPROJECT_NAME_RE = re.compile(r'^name\s*=\s*"example"', re.MULTILINE)
+# The dynamic-version directive embeds the package name
+# (``version = {attr = "example.__version__"}``); it must follow the rename
+# or the build would look for the now-removed ``example`` module.
+VERSION_ATTR_RE = re.compile(r'attr\s*=\s*"example\.__version__"')
 INIT_DOCSTRING_RE = re.compile(r'""".*?"""', re.DOTALL)
 
 
@@ -51,6 +57,11 @@ def rewrite_imports(text: str, new_name: str) -> str:
 
 def replace_pyproject_name(text: str, new_name: str) -> str:
     return PYPROJECT_NAME_RE.sub(f'name = "{new_name}"', text)
+
+
+def replace_pyproject_version_attr(text: str, new_name: str) -> str:
+    """Keep the dynamic-version ``attr`` reference in sync with the rename."""
+    return VERSION_ATTR_RE.sub(f'attr = "{new_name}.__version__"', text)
 
 
 def remove_readme_notice(text: str) -> str:
@@ -100,6 +111,7 @@ def collect_edits(new_name: str) -> list[tuple[str, str]]:
     pyproject = os.path.join(REPO_ROOT, "pyproject.toml")
     txt = read_text(pyproject)
     new = replace_pyproject_name(txt, new_name)
+    new = replace_pyproject_version_attr(new, new_name)
     if new != txt:
         edits.append((pyproject, new))
 
