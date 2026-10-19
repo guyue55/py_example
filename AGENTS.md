@@ -40,8 +40,8 @@ pre-commit run --all-files   # 本地跑全部 pre-commit 钩子（CI 同款）
 
 - Lint/格式化：ruff（行宽 100，`target-version = py39`）。
 - 导入排序：isort（ruff 内置，`select = ["E","F","I","W"]`）。
-- **刻意不强制 UP（pyupgrade）规则**，保持对 3.9 的低门槛；pre-commit 另有独立
-  `pyupgrade --py39-plus` 钩子做安全现代化。
+- **刻意不强制 UP（pyupgrade）规则**，保持对 3.9 的低门槛；当前 pre-commit **不引入**
+  `pyupgrade` 钩子，避免 PEP 585（`dict[...]` 替代 `Dict[...]` 等）自动改写突破该边界。
 - 类型：mypy 约束 `<2`（兼容 3.9），未对全部函数强制 `disallow_untyped_defs`。
 - 库日志：每个模块用 `logging.getLogger(__name__)`，包在 `__init__` 挂
   `NullHandler`，不要给库加 root handler。
@@ -51,7 +51,9 @@ pre-commit run --all-files   # 本地跑全部 pre-commit 钩子（CI 同款）
 - **唯一手写版本**：`src/example/__init__.py` 的 `__version__`。
 - `pyproject.toml` 通过 `dynamic = ["version"]` + `tool.setuptools.dynamic`
   从 `__version__` 自动派生，**不要再在 pyproject 里写静态 version**。
-- 改名脚本不触碰版本（与包名无关）。
+- 改名时 `scripts/rename_template.py` 会同步更新 `pyproject.toml` 里 dynamic 版本的
+  `attr` 引用（`example.__version__` → `<新名>.__version__`），以保证构建仍可用；
+  版本*数值*始终只由 `__init__.__version__` 决定。
 
 ## Git 约定
 
