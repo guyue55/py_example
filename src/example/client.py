@@ -186,9 +186,7 @@ class APIClient:
             )
         except requests.exceptions.RetryError as e:
             # Retries exhausted on a transport-level failure (connection/timeout).
-            raise APIError(
-                f"Request failed after {self.max_retries} retries: {e}"
-            ) from e
+            raise APIError(f"Request failed after {self.max_retries} retries: {e}") from e
 
         return self._handle_response(response)
 

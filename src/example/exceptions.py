@@ -34,19 +34,23 @@ class APIError(Exception):
 
 class AuthenticationError(APIError):
     """Exception raised when authentication fails."""
+
     pass
 
 
 class RateLimitError(APIError):
     """Exception raised when API rate limit is exceeded."""
+
     pass
 
 
 class ValidationError(APIError):
     """Exception raised when request validation fails."""
+
     pass
 
 
 class ResourceNotFoundError(APIError):
     """Exception raised when a requested resource is not found."""
+
     pass

@@ -23,6 +23,7 @@ Usage
     python scripts/rename_template.py <new_package_name>
     python scripts/rename_template.py my_sdk --dry-run   # preview only
 """
+
 from __future__ import annotations
 
 import argparse
@@ -78,7 +79,7 @@ def rewrite_init_docstring(text: str, new_name: str) -> str:
         f"{quote}{new_name} - A minimal Python SDK utility package.\n\n"
         f"This is the {new_name} package.\n{quote}\n"
     )
-    return text[: match.start()] + new_doc + text[match.end():]
+    return text[: match.start()] + new_doc + text[match.end() :]
 
 
 def read_text(path: str) -> str:
