@@ -5,6 +5,23 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.3.0] - 2026-10-19
+
+### 新增 (Added)
+- 新增 `AGENTS.md`，为 AI 编程助手提供跨工具项目上下文（目录结构、常用命令、代码风格、版本管理与发布边界）。
+- `src/example/__init__.py` 挂 `NullHandler` 并显式声明 `__all__`，规范库日志行为与公共 API 边界。
+
+### 变更 (Changed)
+- 版本管理改为单一事实源：`pyproject.toml` 使用 `dynamic = ["version"]` 从 `__init__.__version__` 自动派生，不再双处手写同步。
+- CI（`ci.yml`）增加最小权限 `contents: read` 与 `timeout-minutes`，action 升级至 `checkout@v6`/`setup-python@v6`，runner 钉 `ubuntu-24.04`。
+- 发布工作流（`publish.yml`）tag 收紧为 `v*.*.*` 并增加 `environment: pypi`；OIDC 发布显式声明 `id-token: write`。
+- `.pre-commit-config.yaml` 扩充 `pre-commit-hooks`（end-of-file-fixer / trailing-whitespace / check-yaml / debug-statements），`ruff-pre-commit` 升级至 v0.17.1。
+- `User-Agent` 改为运行时取顶层包名，改名后自动适配（`_PACKAGE_NAME = __name__.split(".")[0]`）。
+
+### 修复 (Fixed)
+- 修复 `scripts/rename_template.py` 改名时未同步 `version = {attr = "<名>.__version__"}` 的隐患，避免改名后构建报 `ModuleNotFoundError`。
+- 校正 `AGENTS.md` 中两处与实现脱节的描述（pyupgrade 钩子、改名与版本的关系）。
+
 ## [0.2.0] - 2026-10-19
 
 ### 新增 (Added)
@@ -35,5 +52,6 @@
 - 提供 `BearerAuth`、`BasicAuth`、`ApiKeyAuth` 三种认证适配类。
 - 提供异常体系：`APIError` 基类及 `AuthenticationError`、`RateLimitError`、`ValidationError`、`ResourceNotFoundError`。
 
+[0.3.0]: https://github.com/guyue55/py_example/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/guyue55/py_example/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/guyue55/py_example/releases/tag/v0.1.0
