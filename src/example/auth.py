@@ -5,6 +5,7 @@ This module provides authentication classes for API clients.
 
 from requests.auth import AuthBase
 from requests.auth import HTTPBasicAuth as _HTTPBasicAuth
+from requests.models import PreparedRequest
 
 
 class BearerAuth(AuthBase):
@@ -25,7 +26,7 @@ class BearerAuth(AuthBase):
         """
         self.token = token
 
-    def __call__(self, request):
+    def __call__(self, request: PreparedRequest) -> PreparedRequest:
         """Add the Bearer token to the request headers.
 
         Args:
@@ -78,7 +79,7 @@ class ApiKeyAuth(AuthBase):
         if self.location not in ["header", "query"]:
             raise ValueError("Location must be either 'header' or 'query'")
 
-    def __call__(self, request):
+    def __call__(self, request: PreparedRequest) -> PreparedRequest:
         """Add the API key to the request.
 
         Args:
