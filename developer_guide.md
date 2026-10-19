@@ -37,16 +37,17 @@ ruff check .
 
 ## 3.1 版本管理
 
-- 遵循语义化版本规范
-- 在 `pyproject.toml` 的 `[project]` 中更新 `version`
-- 同步更新 `src/example/__init__.py` 中的 `__version__`
-- 添加版本更新日志
+- 遵循语义化版本规范。
+- **唯一手写版本**位于 `src/example/__init__.py` 的 `__version__`。
+- `pyproject.toml` 通过 `dynamic = ["version"]` 从该值自动派生，**无需手动同步**，
+  不要在 pyproject 里再写静态 `version`。
+- 每次发布在 `CHANGELOG.md` 记录变更（Keep a Changelog 格式）。
 
 ## 3.2 打包和发布
 
 > 推荐方式：Trusted Publishing（OIDC），无需在仓库中保存 API token。
 > 完整流程见 [docs/PUBLISHING.md](docs/PUBLISHING.md)，GitHub Actions 已提供
-> `.github/workflows/publish.yml`（推送 `v*` 标签即自动发布）。
+> `.github/workflows/publish.yml`（推送 `v*.*.*` 标签即自动发布）。
 
 本地自检步骤：
 

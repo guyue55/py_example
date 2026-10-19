@@ -33,13 +33,13 @@ python -m twine check dist/*
   - **Owner / Repository**：你的 GitHub 仓库（如 `guyue55/py_example`）。
   - **Workflow name**：`publish.yml`。
   - **Environment name**：留空或填 `pypi`（与 `publish.yml` 中 `environment` 对应）。
-  - **Tag / branch**：建议用 tag 模式，例如 `v*`。
+  - **Tag / branch**：建议用 tag 模式，例如 `v*.*.*`。
 
 > 无需生成、无需在仓库里保存 PyPI token——OIDC 会在工作流运行时自动签发临时凭证。
 
 ## 3. 发布（从 tag 触发）
 
-本仓库已提供 `.github/workflows/publish.yml`：当推送 `v*` 标签时，自动构建
+本仓库已提供 `.github/workflows/publish.yml`：当推送 `v*.*.*` 标签时，自动构建
 并通过 `pypa/gh-action-pypi-publish` 发布。
 
 ```bash
@@ -53,8 +53,8 @@ git push origin v0.1.0
 
 ## 4. 版本号与 CHANGELOG
 
-- 每次发布前同步更新 `pyproject.toml` 的 `version` 与 `src/<你的包>/__init__.py`
-  的 `__version__`（本模板已用相同值）。
+- 版本唯一手写源是 `src/<你的包>/__init__.py` 的 `__version__`；`pyproject.toml`
+  通过 `dynamic = ["version"]` 自动派生，**只需改这一处**。
 - 在 `CHANGELOG.md` 记录本次变更（Keep a Changelog 格式）。
 
 ## 注意事项
