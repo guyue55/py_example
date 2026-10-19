@@ -8,15 +8,21 @@ git clone https://github.com/guyue55/py_example.git
 cd py_example
 ```
 
-2. 安装开发依赖：
+2. 安装开发依赖（含测试与 lint 工具）：
 ```bash
-pip install -e .
+pip install -e ".[dev]"
 ```
 
 ## 2.2 运行测试
 
 ```bash
-python -m unittest discover tests
+pytest
+```
+
+## 2.2.1 代码风格检查
+
+```bash
+ruff check .
 ```
 
 ## 2.3 代码贡献指南
@@ -32,19 +38,20 @@ python -m unittest discover tests
 ## 3.1 版本管理
 
 - 遵循语义化版本规范
-- 在 setup.py 中更新版本号
+- 在 `pyproject.toml` 的 `[project]` 中更新 `version`
+- 同步更新 `src/example/__init__.py` 中的 `__version__`
 - 添加版本更新日志
 
 ## 3.2 打包和发布
 
 先安装依赖
 ```bash
-python -m pip install --upgrade setuptools wheel twine
+python -m pip install --upgrade build twine
 ```
 
 1. 构建分发包：
 ```bash
-python setup.py sdist bdist_wheel
+python -m build
 ```
 
 2. 检查包是否符合PyPI的要求
