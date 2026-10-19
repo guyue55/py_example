@@ -7,7 +7,7 @@ name: Publish
 #   1. This workflow is inert until you (a) rename the package to a real name
 #      via scripts/rename_template.py and (b) configure a "Trusted Publisher"
 #      for that package name on PyPI (and optionally TestPyPI) pointing at this
-#      repo + the `publish.yml` workflow + a `v*` tag scope. See docs/PUBLISHING.md.
+#      repo + the `publish.yml` workflow + an `v*.*.*` tag scope. See docs/PUBLISHING.md.
 #   2. The template ships with the placeholder name `example` and is NOT meant
 #      to be published as-is.
 #   3. To validate against TestPyPI first, uncomment the `repository-url` line
@@ -16,18 +16,22 @@ name: Publish
 on:
   push:
     tags:
-      - "v*"
+      - "v*.*.*"
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
-    # Optional: add an `environment: pypi` here to match the Trusted Publisher
-    # environment name configured on PyPI.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: pypi
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
