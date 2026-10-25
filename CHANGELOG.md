@@ -5,6 +5,19 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.0] - 待发布
+
+### 修复与安全默认
+- 改名后User-Agent测试不再硬编码旧包名；拒绝Python关键字和路径式包名，AI入口及动态版本引用同步。
+- 默认关闭写操作状态码重试与自动重定向；读取错误不重放，写入重试须显式允许并由调用方保证幂等。
+- 真正启用jitter，修复单请求timeout冲突和调用方headers被修改；错误消息不默认回显远端正文。
+- 基于维护和安全状态将Python下限提升至3.11，Requests>=2.33、urllib3>=2.8；setuptools最低77.0.3匹配SPDX许可写法。
+
+### 工程与验证
+- 添加类型标记、本地真实HTTP回归、模板工具和占位发布保护测试。
+- CI扩展解释器及Windows/macOS，增加改名、wheel消费、类型消费、最低依赖和无Git源码包重建验证。
+- 发布改为显式启用、手动选择Tag，质量门禁、构建与OIDC上传分离；修正授权文档。
+
 ## [0.3.0] - 2026-10-19
 
 ### 新增 (Added)

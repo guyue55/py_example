@@ -60,3 +60,8 @@ venv.bak/
 .vscode/
 *.swp
 *.swo
+
+# 本机工作状态，不进入模板或发布包
+runtime/
+.workbuddy/
+.mypy_cache/

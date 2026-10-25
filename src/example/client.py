@@ -4,11 +4,13 @@ This module provides the APIClient class for making HTTP requests to APIs.
 """
 
 import logging
-from typing import Any, Dict, Optional
+import math
+from typing import Any, Dict, Iterable, Optional
 
 import requests
 from requests.adapters import HTTPAdapter
 from requests.auth import AuthBase
+from requests.structures import CaseInsensitiveDict
 from urllib3.util.retry import Retry
 
 from . import __version__
@@ -25,9 +27,8 @@ logger = logging.getLogger(__name__)
 # retried.
 DEFAULT_STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
-# Methods we allow to be retried. By default urllib3 only retries "safe"
-# methods; we opt in to the write methods used by a typical SDK client.
-RETRY_ALLOWED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+# 只读方法默认可重试；写操作必须由调用方依据服务端幂等保证显式开启。
+RETRY_ALLOWED_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 
 class APIClient:
@@ -36,7 +37,9 @@ class APIClient:
     Retries (including exponential backoff with jitter) are handled at the
     transport layer via :class:`urllib3.util.retry.Retry` mounted on the
     underlying :class:`requests.Session`. This covers 429 rate-limit responses,
-    5xx server errors, connection errors, and timeouts.
+    5xx server errors and pre-send connection errors. Read errors are not
+    retried because the remote side may already have performed the operation.
+    Request timeout is not an overall deadline including backoff/Retry-After.
 
     Attributes:
         base_url (str): The base URL for the API.
@@ -52,7 +55,10 @@ class APIClient:
         auth: Optional[AuthBase] = None,
         timeout: int = 60,
         max_retries: int = 3,
-        retry_delay: int = 1,
+        retry_delay: float = 1,
+        *,
+        retry_methods: Optional[Iterable[str]] = None,
+        retry_jitter: float = 0.2,
     ):
         """Initialize the API client.
 
@@ -62,7 +68,23 @@ class APIClient:
             timeout: Timeout for requests in seconds.
             max_retries: Maximum number of retry attempts for failed requests.
             retry_delay: Base backoff factor (seconds) for exponential backoff.
+            retry_methods: Explicit retry allowlist; defaults to GET/HEAD/OPTIONS.
+                Writes require a server-side idempotency guarantee.
+            retry_jitter: Maximum random jitter added to exponential backoff.
         """
+        if isinstance(max_retries, bool) or not isinstance(max_retries, int) or max_retries < 0:
+            raise ValueError("max_retries必须是非负整数")
+        if any(not math.isfinite(v) or v < 0 for v in (retry_delay, retry_jitter)):
+            raise ValueError("退避与抖动必须是有限非负数")
+        if isinstance(retry_methods, str):
+            raise ValueError("retry_methods必须是方法名集合，不能是单个字符串")
+        methods = RETRY_ALLOWED_METHODS if retry_methods is None else frozenset(retry_methods)
+        if not methods or any(
+            not isinstance(m, str) or not m.isascii() or not m.isalpha() for m in methods
+        ):
+            raise ValueError("retry_methods必须包含合法HTTP方法名")
+        self.retry_methods = frozenset(m.upper() for m in methods)
+        self.retry_jitter = retry_jitter
         self.base_url = base_url.rstrip("/")
         self.auth = auth
         self.timeout = timeout
@@ -85,9 +107,13 @@ class APIClient:
         """
         retry = Retry(
             total=self.max_retries,
+            connect=self.max_retries,
+            read=0,
+            other=0,
             backoff_factor=self.retry_delay,
+            backoff_jitter=self.retry_jitter,
             status_forcelist=DEFAULT_STATUS_FORCELIST,
-            allowed_methods=RETRY_ALLOWED_METHODS,
+            allowed_methods=self.retry_methods,
             respect_retry_after_header=True,
             raise_on_status=False,
         )
@@ -126,15 +152,13 @@ class APIClient:
             return response
         except requests.exceptions.HTTPError as e:
             if response.status_code == 429:
-                raise RateLimitError(
-                    f"Rate limit exceeded: {response.text}", response=response
-                ) from e
+                raise RateLimitError("API rate limit exceeded (HTTP 429)", response=response) from e
             elif response.status_code in (401, 403):
                 raise AuthenticationError(
-                    f"Authentication failed: {response.text}", response=response
+                    f"API authentication failed (HTTP {response.status_code})", response=response
                 ) from e
             else:
-                raise APIError(f"API error: {response.text}", response=response) from e
+                raise APIError(f"API error (HTTP {response.status_code})", response=response) from e
 
     def request(
         self,
@@ -166,11 +190,15 @@ class APIClient:
             APIError: If the request fails after all retries.
         """
         url = self._build_url(endpoint)
-        headers = headers or {}
+        # 不修改调用方字典；HTTP头大小写不敏感。
+        request_headers = CaseInsensitiveDict(headers or {})
+        timeout = kwargs.pop("timeout", self.timeout)
+        # 自定义API-Key头未必会在跨域跳转时被移除，默认不自动跟随重定向。
+        kwargs.setdefault("allow_redirects", False)
 
         # Add default User-Agent (driven by the package version).
-        if "User-Agent" not in headers:
-            headers["User-Agent"] = f"{_PACKAGE_NAME}/{__version__}"
+        if "User-Agent" not in request_headers:
+            request_headers["User-Agent"] = f"{_PACKAGE_NAME}/{__version__}"
 
         try:
             response = self.session.request(
@@ -179,14 +207,14 @@ class APIClient:
                 params=params,
                 data=data,
                 json=json,
-                headers=headers,
+                headers=request_headers,
                 files=files,
-                timeout=self.timeout,
+                timeout=timeout,
                 **kwargs,
             )
-        except requests.exceptions.RetryError as e:
-            # Retries exhausted on a transport-level failure (connection/timeout).
-            raise APIError(f"Request failed after {self.max_retries} retries: {e}") from e
+        except requests.exceptions.RequestException as e:
+            # 默认消息不复制URL、响应正文或认证信息；保留cause供受控诊断。
+            raise APIError("API transport failed; check the underlying cause") from e
 
         return self._handle_response(response)
 

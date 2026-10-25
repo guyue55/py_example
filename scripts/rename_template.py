@@ -29,6 +29,7 @@ Usage
 from __future__ import annotations
 
 import argparse
+import keyword
 import os
 import re
 import shutil
@@ -48,7 +49,7 @@ INIT_DOCSTRING_RE = re.compile(r'""".*?"""', re.DOTALL)
 
 def is_valid_package_name(name: str) -> bool:
     """Return True if ``name`` is a legal Python package identifier."""
-    return bool(re.fullmatch(r"[a-z_][a-z0-9_]*", name))
+    return bool(re.fullmatch(r"[a-z][a-z0-9_]*", name)) and not keyword.iskeyword(name)
 
 
 def rewrite_imports(text: str, new_name: str) -> str:
@@ -99,7 +100,7 @@ def read_text(path: str) -> str:
 
 
 def write_text(path: str, text: str) -> None:
-    with open(path, "w", encoding="utf-8") as fh:
+    with open(path, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(text)
 
 
@@ -139,13 +140,15 @@ def collect_edits(new_name: str) -> list[tuple[str, str]]:
         if new != txt:
             edits.append((readme, new))
 
-    # developer_guide.md (Chinese guide references src/example path)
-    guide = os.path.join(REPO_ROOT, "developer_guide.md")
-    if os.path.exists(guide):
-        txt = read_text(guide)
-        new = txt.replace("src/example", f"src/{new_name}")
-        if new != txt:
-            edits.append((guide, new))
+    # AI入口和维护文档也跟随导入路径；保留模板工具本身的固定占位语义。
+    for filename in ("developer_guide.md", "AGENTS.md", "docs/PUBLISHING.md"):
+        guide = os.path.join(REPO_ROOT, filename)
+        if os.path.exists(guide):
+            txt = read_text(guide)
+            new = rewrite_imports(txt, new_name).replace("src/example", f"src/{new_name}")
+            new = new.replace("example.__version__", f"{new_name}.__version__")
+            if new != txt:
+                edits.append((guide, new))
 
     return edits
 
@@ -173,6 +176,9 @@ def main() -> int:
         print(f"ERROR: target already exists: {target}")
         return 1
 
+    if not os.path.isdir(SRC_EXAMPLE) or os.path.islink(SRC_EXAMPLE):
+        print("ERROR: src/example must be an existing regular template directory")
+        return 1
     edits = collect_edits(new_name)
 
     if args.dry_run:
@@ -189,7 +195,7 @@ def main() -> int:
 
     print(f"Renamed package 'example' -> '{new_name}'.")
     print("Next steps:")
-    print("  1. git add -A && git commit -m 'chore: rename template to <name>'")
+    print("  1. 审核diff和暂存清单，再以 chore(template): 完成模板改名 提交")
     print("  2. pip install -e .")
     print("  3. pytest")
     print("  4. Update authors/urls in pyproject.toml for your project.")
