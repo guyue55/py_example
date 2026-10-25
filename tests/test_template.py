@@ -27,7 +27,7 @@ def test_rename_updates_dynamic_version_and_imports():
         == 'version = {attr = "sample_sdk.__version__"}'
     )
     assert rename_template.rewrite_imports(
-        "from example.client import APIClient", "sample_sdk"
+        "from " + "example.client import APIClient", "sample_sdk"
     ) == ("from sample_sdk.client import APIClient")
 
 

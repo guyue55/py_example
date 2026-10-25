@@ -155,7 +155,7 @@ def main():
         copy_project(root)
         _, original_package, _ = metadata(root)
         if args.rename and original_package == "example":
-            run([sys.executable, "scripts/rename_template.py", "sample_sdk"], root)
+            run([sys.executable, "scripts/rename_template.py", "my_sdk"], root)
         elif args.rename:
             print("RENAME_NOT_APPLICABLE", original_package, flush=True)
         venv.EnvBuilder(with_pip=True).create(root / "source-env")
