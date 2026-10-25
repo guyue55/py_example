@@ -1,64 +1,34 @@
-# 发布到 PyPI（Trusted Publishing）
+# 发布与回滚
 
-本模板本身以占位包名 `example` 存在，**不应直接发布**。当你已用
-`scripts/rename_template.py` 改名成自己的包名后，即可按本文档发布到 PyPI。
+## 模板与实际库的区别
 
-推荐使用 **Trusted Publishing（OIDC）**，无需在仓库中存放任何 API token。
+`guyue55/py_example`是模板，保留占位包名example，只准备／发布GitHub源码版本。其Publish工作流显式拒绝在原仓库上传，也不会因Tag推送运行。
 
-## 流程概览
+使用模板的实际库先改名并替换authors／project.urls，再走下列步骤。不要原样上传example包或保留占位维护者。
 
-1. 改名并完善元数据（`authors`、`project.urls`、描述）。
-2. 本地构建并检查：`python -m build` + `python -m twine check dist/*`。
-3. 先在 **TestPyPI** 验证一次。
-4. 打版本标签 `vX.Y.Z`，推送标签触发 GitHub Actions 自动发布到正式 PyPI。
+## 本地准备
 
-## 1. 本地构建与自检
+1. 修改src下唯一__version__，更新CHANGELOG和发布说明；版本Tag必须与之完全一致。
+2. 安装开发依赖，执行开发指南中的格式／类型／源码测试。
+3. 执行 `python scripts/verify_package.py --rename` 和 `--minimum`，验证模板改名链路；实际库也可运行不带--rename的验证器。
+4. 在最终main提交上构建 `python -m build`；运行 `python -m twine check --strict dist/*`。Twine主要检查说明文档渲染，不是完整安全或功能认证。
+5. 检查许可证、元数据、源码、测试、来源SHA和摘要。不得把本机环境、WorkBuddy状态或凭证打包。
+6. main完整CI通过后，创建指向同一提交的附注Tag。已发布Tag或同名资产不得移动／覆盖，修复另发版本。
 
-```bash
-python -m pip install --upgrade build twine
-python -m build
-python -m twine check dist/*
-```
+## 复制后启用PyPI
 
-`twine check` 会校验 `long_description`（README）、元数据与 wheel 结构。
+- PyPI/TestPyPI各自配置Trusted Publisher：owner、repository、workflow文件publish.yml，以及环境名pypi或testpypi。
+- GitHub仓库创建对应环境，设置审批人和允许main的分支规则；配置仓库变量ENABLE_PYPI_PUBLISH=true。
+- 在main的Publish工作流手动填写Tag和目标（默认testpypi）。Tag必须存在、属于main历史、版本与非占位元数据一致。
+- preflight固定提交 → 复用完整CI → 独立构建验包 → 制品传递 → 环境审批 → 上传。只有最后上传任务具备id-token:write；上传任务不检出源码、不执行构建。
+- 正式上传前核验目标、名称与授权。TestPyPI检查流程不等于正式索引依赖解析已通过；上传后匿名下载／安装复验。
 
-## 2. 配置 Trusted Publisher（一次性）
+PyPI没有在上述GitHub Publisher配置中提供任意Tag通配输入；Tag限制由GitHub工作流和环境落实。不要笼统认为私有仓库必须使用长期token；按实际OIDC支持与权限核验。
 
-在 PyPI（以及可选的 TestPyPI）后台为你的包名添加 **Trusted Publisher**：
+默认不使用长期token，也不建议将token写入.pypirc示例。可信发布仅验证身份，不证明代码或构建物安全。
 
-- **PyPI**：Account → Publishing（或某包的管理页）→ Add a new pending
-  publisher。
-- 填写：
-  - **PyPI project name**：你的真实包名（与 `pyproject.toml` 的 `name` 一致）。
-  - **Owner / Repository**：你的 GitHub 仓库（如 `guyue55/py_example`）。
-  - **Workflow name**：`publish.yml`。
-  - **Environment name**：留空或填 `pypi`（与 `publish.yml` 中 `environment` 对应）。
-  - **Tag / branch**：建议用 tag 模式，例如 `v*.*.*`。
+## 失败与回滚
 
-> 无需生成、无需在仓库里保存 PyPI token——OIDC 会在工作流运行时自动签发临时凭证。
+CI或验包失败停止发布；上传状态未知先查询索引，不盲目重复写入。已上传版本不可原地修复；必要时撤回可发现性并发布修正版，记录影响，不保证删除第三方下载副本。
 
-## 3. 发布（从 tag 触发）
-
-本仓库已提供 `.github/workflows/publish.yml`：当推送 `v*.*.*` 标签时，自动构建
-并通过 `pypa/gh-action-pypi-publish` 发布。
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-- 发布正式 PyPI：默认行为。
-- 发布到 TestPyPI 验证：在 `publish.yml` 中取消注释 `repository-url` 那一行，
-  并先在 TestPyPI 配置同名 Trusted Publisher，然后打一个测试标签即可。
-
-## 4. 版本号与 CHANGELOG
-
-- 版本唯一手写源是 `src/<你的包>/__init__.py` 的 `__version__`；`pyproject.toml`
-  通过 `dynamic = ["version"]` 自动派生，**只需改这一处**。
-- 在 `CHANGELOG.md` 记录本次变更（Keep a Changelog 格式）。
-
-## 注意事项
-
-- 包名在 PyPI 上全局唯一，改名时请先确认未被占用。
-- Trusted Publishing 要求仓库为**公开**或已正确授权；私有仓库请改用 token 方式。
-- 发布是不可逆操作；正式发布前务必先在 TestPyPI 跑通一次。
+参考：[PyPA打包](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/)、[PyPI配置](https://docs.pypi.org/trusted-publishers/adding-a-publisher/)、[PyPI安全模型](https://docs.pypi.org/trusted-publishers/security-model/)。

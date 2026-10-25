@@ -3,3 +3,7 @@ include LICENSE
 recursive-include tests *
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
+recursive-include src py.typed
+recursive-include scripts *.py
+recursive-include docs *.md
+include AGENTS.md developer_guide.md CHANGELOG.md

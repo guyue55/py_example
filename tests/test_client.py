@@ -1,8 +1,10 @@
 import unittest
 from unittest.mock import Mock, patch
 
+import pytest
 import requests
 
+from example import __version__
 from example.client import APIClient
 from example.exceptions import APIError, AuthenticationError, RateLimitError
 
@@ -14,6 +16,9 @@ class TestAPIClient(unittest.TestCase):
         """Set up test fixtures."""
         self.base_url = "https://api.example.com"
         self.client = APIClient(self.base_url)
+
+    def tearDown(self):
+        self.client.close()
 
     def test_build_url(self):
         """Test URL building functionality."""
@@ -37,7 +42,10 @@ class TestAPIClient(unittest.TestCase):
 
             self.client.get("/endpoint")
             _, kwargs = mock_request.call_args
-            self.assertTrue(kwargs["headers"]["User-Agent"].startswith("example/"))
+            self.assertEqual(
+                kwargs["headers"]["User-Agent"],
+                f"{APIClient.__module__.split('.')[0]}/{__version__}",
+            )
 
     @patch("requests.Session.request")
     def test_request_success(self, mock_request):
@@ -113,12 +121,15 @@ class TestAPIClient(unittest.TestCase):
                 self.client.get("/endpoint")
 
     def test_retry_adapter_is_configured(self):
-        """The mounted adapter must retry 429/5xx and the write methods."""
+        """默认重试只允许读取方法，读取错误不重放。"""
         adapter = self.client.session.get_adapter("https://")
         retry = adapter.max_retries
         self.assertEqual(retry.total, 3)
         self.assertEqual(retry.status_forcelist, [429, 500, 502, 503, 504])
-        self.assertTrue({"POST", "PUT", "PATCH", "DELETE"}.issubset(set(retry.allowed_methods)))
+        self.assertEqual(set(retry.allowed_methods), {"GET", "HEAD", "OPTIONS"})
+        self.assertEqual(retry.read, 0)
+        self.assertEqual(retry.other, 0)
+        self.assertEqual(retry.backoff_jitter, 0.2)
         self.assertFalse(retry.raise_on_status)
 
     def test_context_manager_closes_session(self):
@@ -132,3 +143,31 @@ class TestAPIClient(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_request_options_and_headers_do_not_mutate_caller():
+    client = APIClient("https://example.invalid")
+    headers = {"user-agent": "caller"}
+    with client, patch.object(client.session, "request") as send:
+        response = Mock(spec=requests.Response)
+        response.raise_for_status.return_value = None
+        send.return_value = response
+        client.get("/x", headers=headers, timeout=0.5)
+        assert send.call_args.kwargs["timeout"] == 0.5
+        assert send.call_args.kwargs["headers"]["User-Agent"] == "caller"
+        assert send.call_args.kwargs["allow_redirects"] is False
+    assert headers == {"user-agent": "caller"}
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"max_retries": -1},
+        {"retry_jitter": float("inf")},
+        {"retry_methods": "POST"},
+        {"retry_methods": []},
+    ],
+)
+def test_invalid_retry_configuration_is_rejected(options):
+    with pytest.raises(ValueError):
+        APIClient("https://example.invalid", **options)
