@@ -17,6 +17,8 @@ python scripts/verify_package.py --rename --minimum
 
 verify_package.py的editable安装仅存在于临时副本的source-env；wheel消费者另建环境，且不复制src和pyproject，避免源码遮蔽发行包。原始与重建wheel均测试；源码包用最低后端77.0.3、无Git构建。最低直接依赖固定为Requests2.33.0／urllib3 2.8.0；传递依赖正常解析，不声称所有历史最低组合均测试。
 
+CI另解析并审计运行依赖，审计失败阻止合并／上传；安全通告检查不是完整安全认证。
+
 只手动修改src/example/__init__.py中的__version__。改名器同步动态属性和导入路径；提交前审阅显式暂存清单，使用type(scope): 中文说明，不混入本机状态。main走PR，最终main CI与候选提交须一致。
 
 发布与回滚的唯一流程入口：[PUBLISHING.md](docs/PUBLISHING.md)。不在本指南复制另一套token或自动Tag发布方案。
