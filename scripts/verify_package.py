@@ -16,8 +16,16 @@ from packaging.requirements import Requirement
 from project_metadata import ROOT, metadata
 
 
+def clean_environment():
+    env = os.environ.copy()
+    for name in ("PYTHONPATH", "PYTHONHOME", "PYTHONUSERBASE", "PYTEST_ADDOPTS", "PYTEST_PLUGINS"):
+        env.pop(name, None)
+    env["PYTHONNOUSERSITE"] = "1"
+    return env
+
+
 def run(args, cwd):
-    subprocess.run([str(a) for a in args], cwd=cwd, check=True)
+    subprocess.run([str(a) for a in args], cwd=cwd, env=clean_environment(), check=True)
 
 
 def copy_project(target):
@@ -93,7 +101,7 @@ def verify(root, minimum=False, artifacts=None):
     source = next(extracted.iterdir())
     constraint = root / "backend.txt"
     constraint.write_text("setuptools==77.0.3\n", encoding="utf-8")
-    env = os.environ.copy()
+    env = clean_environment()
     env["PIP_CONSTRAINT"] = str(constraint)
     subprocess.run(
         [sys.executable, "-m", "build", "--wheel", "--outdir", str(rebuilt)],
